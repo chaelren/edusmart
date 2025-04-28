@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "97147193340",
+    "project_id": "edusmart-a4424",
+    "storage_bucket": "edusmart-a4424.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:97147193340:android:10d77cac9e6d11075b1479",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8wR3oTKmPM3nFFD6_WVCjYb4vgug_A_U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
