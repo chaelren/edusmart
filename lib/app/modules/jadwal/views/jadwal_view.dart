@@ -32,7 +32,7 @@ class JadwalView extends GetView<JadwalController> {
                     itemCount: controller.jadwalList.length,
                     itemBuilder: (context, index) {
                       final jadwal = controller.jadwalList[index];
-                      return _buildJadwalCard(jadwal);
+                      return _buildJadwalCard(context, jadwal);
                     },
                   );
                 }),
@@ -54,7 +54,7 @@ class JadwalView extends GetView<JadwalController> {
           IconButton(
             icon: Icon(Icons.notifications_none),
             onPressed: () {
-              // Notifikasi handler
+              controller.cekNotifikasi();
             },
           ),
         ],
@@ -125,7 +125,7 @@ class JadwalView extends GetView<JadwalController> {
       child: Row(
         children: [
           ElevatedButton.icon(
-            onPressed: () => _showTambahJadwalDialog(context),
+            onPressed: () => _showTambahAtauEditJadwalDialog(context),
             icon: Icon(Icons.add),
             label: Text("Tambah Jadwal"),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
@@ -140,7 +140,7 @@ class JadwalView extends GetView<JadwalController> {
     );
   }
 
-  Widget _buildJadwalCard(Map<String, dynamic> jadwal) {
+  Widget _buildJadwalCard(BuildContext context, Map<String, dynamic> jadwal) {
     return Card(
       margin: EdgeInsets.all(12),
       child: ListTile(
@@ -148,28 +148,47 @@ class JadwalView extends GetView<JadwalController> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('Tanggal: ${jadwal['tanggal'] ?? '-'}'),
             Text('Mulai: ${jadwal['jam_mulai'] ?? '-'}'),
             Text('Selesai: ${jadwal['jam_berakhir'] ?? '-'}'),
           ],
         ),
-        trailing: Text(jadwal['tipe'] ?? ''),
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'edit') {
+              _showTambahAtauEditJadwalDialog(context, jadwal: jadwal);
+            } else if (value == 'hapus') {
+              controller.hapusJadwal(jadwal['id']);
+            }
+          },
+          itemBuilder:
+              (context) => [
+                PopupMenuItem(value: 'edit', child: Text('Edit')),
+                PopupMenuItem(value: 'hapus', child: Text('Hapus')),
+              ],
+        ),
       ),
     );
   }
 
-  void _showTambahJadwalDialog(BuildContext context) {
-    final namaController = TextEditingController();
-    DateTime? tanggalMulai;
-    DateTime? tanggalBerakhir;
-    TimeOfDay? jamMulai;
-    TimeOfDay? jamBerakhir;
-    String tipe = controller.selectedTab.value;
+  void _showTambahAtauEditJadwalDialog(
+    BuildContext context, {
+    Map<String, dynamic>? jadwal,
+  }) {
+    final namaController = TextEditingController(text: jadwal?['nama'] ?? '');
+    DateTime? tanggalMulai =
+        jadwal != null ? DateTime.parse(jadwal['tanggal']) : null;
+    TimeOfDay? jamMulai =
+        jadwal != null ? _parseTime(jadwal['jam_mulai']) : null;
+    TimeOfDay? jamBerakhir =
+        jadwal != null ? _parseTime(jadwal['jam_berakhir']) : null;
+    String tipe = jadwal?['tipe'] ?? controller.selectedTab.value;
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Tambah Jadwal'),
+          title: Text(jadwal == null ? 'Tambah Jadwal' : 'Edit Jadwal'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -183,40 +202,27 @@ class JadwalView extends GetView<JadwalController> {
                   onPressed: () async {
                     tanggalMulai = await showDatePicker(
                       context: context,
-                      initialDate: DateTime.now(),
+                      initialDate: tanggalMulai ?? DateTime.now(),
                       firstDate: DateTime(2020),
                       lastDate: DateTime(2100),
                     );
                   },
-                  child: Text('Pilih Tanggal Mulai'),
+                  child: Text('Pilih Tanggal'),
                 ),
-                TextButton(
-                  onPressed: () async {
-                    tanggalBerakhir = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2100),
-                    );
-                  },
-                  child: Text('Pilih Tanggal Berakhir'),
-                ),
-                SizedBox(height: 10),
                 TextButton(
                   onPressed: () async {
                     jamMulai = await showTimePicker(
                       context: context,
-                      initialTime: TimeOfDay.now(),
+                      initialTime: jamMulai ?? TimeOfDay.now(),
                     );
                   },
                   child: Text('Pilih Jam Mulai'),
                 ),
-                SizedBox(height: 10),
                 TextButton(
                   onPressed: () async {
                     jamBerakhir = await showTimePicker(
                       context: context,
-                      initialTime: TimeOfDay.now(),
+                      initialTime: jamBerakhir ?? TimeOfDay.now(),
                     );
                   },
                   child: Text('Pilih Jam Berakhir'),
@@ -232,16 +238,26 @@ class JadwalView extends GetView<JadwalController> {
             ElevatedButton(
               onPressed: () {
                 if (tanggalMulai != null &&
-                    tanggalBerakhir != null &&
                     jamMulai != null &&
                     jamBerakhir != null) {
-                  controller.tambahJadwal(
-                    tipe,
-                    namaController.text,
-                    tanggalMulai!,
-                    jamMulai!,
-                    jamBerakhir!,
-                  );
+                  if (jadwal == null) {
+                    controller.tambahJadwal(
+                      tipe,
+                      namaController.text,
+                      tanggalMulai!,
+                      jamMulai!,
+                      jamBerakhir!,
+                    );
+                  } else {
+                    controller.editJadwal(
+                      jadwal['id'],
+                      tipe,
+                      namaController.text,
+                      tanggalMulai!,
+                      jamMulai!,
+                      jamBerakhir!,
+                    );
+                  }
                   Navigator.pop(context);
                 } else {
                   Get.snackbar("Error", "Semua field harus diisi");
@@ -253,5 +269,10 @@ class JadwalView extends GetView<JadwalController> {
         );
       },
     );
+  }
+
+  TimeOfDay _parseTime(String time) {
+    final parts = time.split(':');
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 }
