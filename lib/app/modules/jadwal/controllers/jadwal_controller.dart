@@ -59,22 +59,18 @@ class JadwalController extends GetxController {
     TimeOfDay jamBerakhir,
   ) async {
     try {
-      final tanggalStr = DateFormat('yyyy-MM-dd').format(tanggal);
-      final jamMulaiStr =
-          '${jamMulai.hour.toString().padLeft(2, '0')}:${jamMulai.minute.toString().padLeft(2, '0')}';
-      final jamBerakhirStr =
-          '${jamBerakhir.hour.toString().padLeft(2, '0')}:${jamBerakhir.minute.toString().padLeft(2, '0')}';
-
       await _firestore.collection('jadwal').add({
-        'nama': nama,
         'tipe': tipe,
-        'tanggal': tanggalStr,
-        'jam_mulai': jamMulaiStr,
-        'jam_berakhir': jamBerakhirStr,
+        'nama': nama,
+        'tanggal': DateFormat('yyyy-MM-dd').format(tanggal),
+        'jam_mulai': _formatTime(jamMulai),
+        'jam_berakhir': _formatTime(jamBerakhir),
+        'created_at': FieldValue.serverTimestamp(),
       });
       fetchJadwal();
+      Get.snackbar('Sukses', 'Jadwal berhasil ditambahkan');
     } catch (e) {
-      Get.snackbar('Error', 'Gagal tambah jadwal: $e');
+      Get.snackbar('Error', 'Gagal menambahkan jadwal: $e');
     }
   }
 
@@ -87,22 +83,18 @@ class JadwalController extends GetxController {
     TimeOfDay jamBerakhir,
   ) async {
     try {
-      final tanggalStr = DateFormat('yyyy-MM-dd').format(tanggal);
-      final jamMulaiStr =
-          '${jamMulai.hour.toString().padLeft(2, '0')}:${jamMulai.minute.toString().padLeft(2, '0')}';
-      final jamBerakhirStr =
-          '${jamBerakhir.hour.toString().padLeft(2, '0')}:${jamBerakhir.minute.toString().padLeft(2, '0')}';
-
       await _firestore.collection('jadwal').doc(id).update({
-        'nama': nama,
         'tipe': tipe,
-        'tanggal': tanggalStr,
-        'jam_mulai': jamMulaiStr,
-        'jam_berakhir': jamBerakhirStr,
+        'nama': nama,
+        'tanggal': DateFormat('yyyy-MM-dd').format(tanggal),
+        'jam_mulai': _formatTime(jamMulai),
+        'jam_berakhir': _formatTime(jamBerakhir),
+        'updated_at': FieldValue.serverTimestamp(),
       });
       fetchJadwal();
+      Get.snackbar('Sukses', 'Jadwal berhasil diperbarui');
     } catch (e) {
-      Get.snackbar('Error', 'Gagal edit jadwal: $e');
+      Get.snackbar('Error', 'Gagal mengedit jadwal: $e');
     }
   }
 
@@ -110,35 +102,56 @@ class JadwalController extends GetxController {
     try {
       await _firestore.collection('jadwal').doc(id).delete();
       fetchJadwal();
+      Get.snackbar('Sukses', 'Jadwal berhasil dihapus');
     } catch (e) {
-      Get.snackbar('Error', 'Gagal hapus jadwal: $e');
+      Get.snackbar('Error', 'Gagal menghapus jadwal: $e');
     }
   }
 
-  Future<void> cekJadwalBerakhir() async {
-    final snapshot = await _firestore.collection('jadwal').get();
-    for (var doc in snapshot.docs) {
-      DateTime tanggal = DateTime.parse(doc['tanggal']);
-      if (tanggal.isBefore(DateTime.now())) {
-        await _firestore.collection('jadwal').doc(doc.id).delete();
+  String _formatTime(TimeOfDay time) {
+    final hours = time.hour.toString().padLeft(2, '0');
+    final minutes = time.minute.toString().padLeft(2, '0');
+    return '$hours:$minutes';
+  }
+
+  void cekJadwalBerakhir() async {
+    try {
+      final now = DateTime.now();
+      final todayStr = DateFormat('yyyy-MM-dd').format(now);
+
+      final snapshot =
+          await _firestore
+              .collection('jadwal')
+              .where('tanggal', isEqualTo: todayStr)
+              .get();
+
+      for (var doc in snapshot.docs) {
+        final jamBerakhir = doc['jam_berakhir'];
+        final berakhirTime = _parseTime(jamBerakhir);
+        final endDateTime = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          berakhirTime.hour,
+          berakhirTime.minute,
+        );
+
+        if (now.isAfter(endDateTime)) {
+          // Lakukan tindakan jika sudah lewat (opsional)
+        }
       }
+    } catch (e) {
+      print("Gagal mengecek jadwal berakhir: $e");
     }
-    fetchJadwal();
   }
 
-  Future<void> cekNotifikasi() async {
-    final tomorrow = DateTime.now().add(Duration(days: 1));
-    final snapshot =
-        await _firestore
-            .collection('jadwal')
-            .where(
-              'tanggal',
-              isEqualTo: DateFormat('yyyy-MM-dd').format(tomorrow),
-            )
-            .get();
+  TimeOfDay _parseTime(String time) {
+    final parts = time.split(':');
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+  }
 
-    if (snapshot.docs.isNotEmpty) {
-      Get.snackbar('Reminder', 'Ada jadwal yang akan dimulai besok!');
-    }
+  void cekNotifikasi() {
+    // Fungsi opsional, misal untuk masa depan
+    Get.snackbar("Notifikasi", "Belum ada notifikasi saat ini.");
   }
 }

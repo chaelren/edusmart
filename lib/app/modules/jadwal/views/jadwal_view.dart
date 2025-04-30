@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/jadwal_controller.dart';
 import 'package:intl/intl.dart';
+import 'kalender_view.dart'; // tambahkan import halaman kalender
 
 class JadwalView extends GetView<JadwalController> {
   const JadwalView({super.key});
@@ -129,6 +130,14 @@ class JadwalView extends GetView<JadwalController> {
             icon: Icon(Icons.add),
             label: Text("Tambah Jadwal"),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+          ),
+          SizedBox(width: 8),
+          IconButton(
+            onPressed: () {
+              // Navigasi ke halaman kalender kustom
+              Get.to(() => KalenderView());
+            },
+            icon: Icon(Icons.calendar_today, color: Colors.purple),
           ),
           Spacer(),
           IconButton(
